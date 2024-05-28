@@ -1,0 +1,1361 @@
+\documentclass[landscape,twocolumn,10pt,a4paper]{article}
+\usepackage{graphicx} 
+\usepackage{subfiles} 
+\usepackage{titlesec}
+\usepackage{minted}
+
+\usepackage{geometry}
+\geometry{%
+  top=1.5cm, 
+  bottom=1.5cm, 
+  inner=1.5cm, 
+  outer=1.5cm, 
+  heightrounded, 
+  bindingoffset=0.5cm % Espaço adicional para a encadernação, se necessário
+}
+
+\setlength{\columnseprule}{0.4pt}
+\setminted{
+    breaklines=true,      % Quebra de linha automática
+    breakanywhere=true,
+    breaksymbolleft={},   % Sem símbolo de quebra de linha
+    breakindent=0pt,      % Sem indentação nas linhas quebradas
+    breaksymbolsepleft=0pt, % Sem separação para o símbolo de quebra
+}
+
+
+\title{Capi-Library
+}
+\author{Bruno Rezendo, Dener Ribeiro, Samuel Raimundo}
+% \date{May 2024}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents\section{Estruturas}
+\subsection{waveletTree}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+using namespace std;
+
+struct waveletTree {
+    int lo, hi; // Range of elements
+    waveletTree *l, *r; // Left and Right child
+    vector<int> b; // Freq array
+
+    // Array is in range [x, y]
+    // Indices are in range [from, to]
+    waveletTree(vector<int>::iterator from, vector<int>::iterator to, int x, int y) {
+        lo = x, hi = y;
+
+        // Array is of 0 length
+        // Or a is homogeneous, like {1,1,1,1}
+        if(from == to or hi == lo) return;
+
+        b.reserve(to - from + 1);
+        b.push_back(0);
+
+        int mid = (lo+hi)/2;
+        // Lambda function to check if a number
+        // is less than or equal to mid
+        auto f = [mid](int x){
+			return x <= mid;
+		};
+
+        for(auto it = from; it != to; it++)
+			b.push_back(b.back() + f(*it));
+
+        auto pivot = stable_partition(from, to, f);
+		l = new waveletTree(from, pivot, lo, mid);
+		r = new waveletTree(pivot, to, mid+1, hi);
+    }
+
+    // count of elements in [l, r] equal to k
+    // the interval is 1-indexed
+	int count(int l, int r, int k) {
+		if(l > r or k < lo or k > hi) return 0;
+		if(lo == hi) return r - l + 1;
+		int lb = b[l-1], rb = b[r], mid = (lo+hi)/2;
+		if(k <= mid) return this->l->count(lb+1, rb, k);
+		return this->r->count(l-lb, r-rb, k);
+	}
+
+    // kth smallest element in [l, r]
+    // the interval is 1-indexed
+	int kth(int l, int r, int k){
+		if(l > r) return 0;
+		if(lo == hi) return lo;
+		int lb = b[l-1]; //amt of nos in first (l-1) nos that go in left 
+		int rb = b[r]; //amt of nos in first (r) nos that go in left
+		int inLeft = rb - lb;
+		if(k <= inLeft) return this->l->kth(lb+1, rb , k); // kth is in the left child
+		return this->r->kth(l-lb, r-rb, k-inLeft); // kth is the in right child
+	}
+
+    // count of nos in [l, r] that are <= k
+    // the interval is 1-indexed
+	int lte(int l, int r, int k) {
+		if(l > r or k < lo) return 0;
+		if(hi <= k) return r - l + 1;
+		int lb = b[l-1], rb = b[r];
+		return this->l->lte(lb+1, rb, k) + this->r->lte(l-lb, r-rb, k);
+	}
+    
+    // swap element with index (i) with element with index (i+1)
+    // the index is 1-indexed
+    void swap(int i) {
+        if (lo == hi or i >= b.size() or i <= 0) return;
+        bool iLeft = b[i] > b[i-1];
+        bool i1Left = b[i+1] > b[i];
+        if (iLeft && i1Left) this->l->swap(b[i]);
+        if (!iLeft && !i1Left) this->r->swap(i-b[i]);
+        if (iLeft && !i1Left) b[i]--;
+        if (!iLeft && i1Left) b[i]++;
+    }
+};
+
+int main() {
+    int lo = INT_MAX, hi = INT_MIN;
+    vector<int> v = {3,1,7,5,2,6,4,8,1,2};
+    for (auto el : v) {
+        lo = min(lo, el);
+        hi = max(hi, el);
+    }
+
+    waveletTree wt(v.begin(), v.end(), lo, hi);
+    cout << wt.count(1, 10, 1) << endl;
+    cout << wt.count(7, 9, 1) << endl;
+    cout << wt.kth(1, 10, 3) << endl;
+    cout << wt.kth(7, 10, 3) << endl;
+    cout << wt.lte(1, 10, 2) << endl;
+    cout << wt.lte(7, 10, 2) << endl;
+
+    return 0;
+}\end{minted}
+
+\section{Grafos}
+\subsection{articulationPoints}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<bool> visited(MAXN);
+vector<int> articulationPoints;
+vector<int> tin(MAXN);
+vector<int> lowlink(MAXN);
+int entryTime;
+
+void init(int numV, int numE) {
+    entryTime = 0;
+    articulationPoints.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        visited[i] = false;
+    }
+}
+
+void dfs(int v, int parent) {
+    visited[v] = true;
+    lowlink[v] = tin[v] = entryTime++;
+
+    bool isArticulationPoint = false;
+    int numChildren = 0;
+
+    for (int u : graph[v]) {
+        if (!visited[u]) {
+            numChildren++;
+            
+            dfs(u, v);
+            lowlink[v] = min(lowlink[v], lowlink[u]);
+
+            if (lowlink[u] >= tin[v]) isArticulationPoint = true;
+        } else {
+            if (u == parent) continue;
+
+            lowlink[v] = min(lowlink[v], tin[u]);
+        }
+    }
+
+    if (v == parent && numChildren >= 2) articulationPoints.push_back(v);
+    if (v != parent && isArticulationPoint) articulationPoints.push_back(v);
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+    }
+
+    for (int i = 0; i < n; i++) if(!visited[i]) dfs(i,i);
+
+    cout << "Number of articulation points: " << articulationPoints.size() << endl;
+    for (int point : articulationPoints) cout << point+1 << " ";
+    cout << endl;
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{bridgeTreeEbcc}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<bool> visited(MAXN);
+vector<int> tin(MAXN);
+vector<int> lowlink(MAXN);
+stack<int> vertices;
+vector<vector<int>> ebcc; // edge-biconnected components
+int entryTime;
+
+void init(int numV, int numE) {
+    entryTime = 0;
+    ebcc.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        visited[i] = false;
+    }
+}
+
+void dfs(int v, int parent) {
+    visited[v] = true;
+    lowlink[v] = tin[v] = entryTime++;
+    vertices.push(v); 
+
+    for (int u : graph[v]) {
+        if (!visited[u]) {
+            dfs(u, v);
+            lowlink[v] = min(lowlink[v], lowlink[u]);
+        } else {
+            if (u == parent) continue;
+
+            lowlink[v] = min(lowlink[v], tin[u]);
+        }
+    }
+
+    // we need to execute this for the root, so there's no need to check (v != parent)
+    if (lowlink[v] == tin[v]) {
+        vector<int> newComponent;
+        do {
+            newComponent.push_back(vertices.top());
+            vertices.pop();
+        } while (newComponent.back() != v);
+
+        ebcc.push_back(newComponent);
+    }
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+    }
+
+    // DOES NOT WORK WITH MULTIPLE EDGES
+    for (int i = 0; i < n; i++) if(!visited[i]) dfs(i,i);
+
+    cout << "Num components: " << ebcc.size() << endl; 
+    for (auto component : ebcc) {
+        cout << "=> ";
+        for (auto el : component) cout << el+1 << " ";
+        cout << endl;
+    }       
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{biconnectedComponents}
+\begin{minted}{cpp}
+
+// Biconnected Components = 2-Vertex Connected Components
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<vector<int>> edgeIds(MAXN);
+vector<pair<int,int>> edges(MAXN);
+vector<bool> visited(MAXN);
+vector<bool> edgeVisited(MAXN);
+vector<int> tin(MAXN);
+vector<int> lowlink(MAXN);
+vector<int> isArticulationPoint(MAXN);
+stack<int> edgesStack;
+vector<vector<pair<int,int>>> bcc; // biconnected components
+int entryTime;
+
+void init(int numV, int numE) {
+    entryTime = 0;
+    bcc.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        edgeIds[i].clear();
+        visited[i] = false;
+        isArticulationPoint[i] = false;
+    }
+    for (int i = 0; i < 2*numE; i++) {
+        edgeVisited[i] = false;
+    }
+}
+
+void newBiconnectedComponent (int edgeId) {
+    if(edgesStack.empty()) return; // dealing with connected component of one vertex
+    
+    vector<pair<int,int>> newComponent;
+    int currId;
+    do {
+        currId = edgesStack.top();
+        newComponent.push_back(edges[currId]);
+        edgesStack.pop();
+        if(edgesStack.empty()) break;
+    } while(currId != edgeId);
+    bcc.push_back(newComponent);
+}
+
+void dfs(int v, int parent) {
+    visited[v] = true;
+    lowlink[v] = tin[v] = entryTime++;
+
+    int numChildren = 0;
+    for (int i = 0; i < graph[v].size(); i++) {
+        int u = graph[v][i];
+        int edgeId = edgeIds[v][i];
+
+        if (edgeVisited[edgeId]) continue;
+        edgeVisited[edgeId] = true;
+        edgesStack.push(edgeId);
+
+        if (!visited[u]) {
+            numChildren++;
+
+            dfs(u, v);
+            lowlink[v] = min(lowlink[v], lowlink[u]);
+
+            bool foundNewComponent = false;
+            if (v == parent && numChildren >= 2) foundNewComponent = true;
+            if (v != parent && lowlink[u] >= tin[v]) foundNewComponent = true;
+
+            if (foundNewComponent) {
+                isArticulationPoint[v] = true;
+                newBiconnectedComponent(edgeId);
+            }
+        } else {
+            lowlink[v] = min(lowlink[v], tin[u]);
+        }
+    }
+}
+
+void findBiconnectedComponents(int n) {
+    for (int i = 0; i < n; i++) {
+        if(!visited[i]) {
+            dfs(i,i);
+            newBiconnectedComponent(-1);
+        }
+    }
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+        edgeIds[a].push_back(i);
+        edgeIds[b].push_back(i);
+        edges[i] = {a, b};
+    }
+
+    findBiconnectedComponents(n);
+
+    cout << "Num components: " << bcc.size() << endl; 
+    for (auto component : bcc) {
+        cout << "=> ";
+        for (auto el : component) cout << "(" << el.first+1 << ", " << el.second+1 << ") ";
+        cout << endl;
+    }       
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{smallToLarge}
+\begin{minted}{cpp}
+
+// Small To Large
+// 1. Faz queries sem update na subárvore
+// 2. Resolve os filhos leves e depois os pesados. 
+// 3. A resposta para os filhos leves é sempre adicionada e apagada. 
+// 4. A resposta dos filhos pesados é mantida.
+//
+// O(N * log(N) * C(u))
+// 
+// C(u) é acomplexidade do update da
+// informação de um vértice na resposta
+
+void add(int u) {/* aqui adiciona a subarvore de u na resposta */}
+
+void rem(int u) {/* aqui remove a subarvore de u da resposta */}
+ 
+void solve(int u, int keep=1) {
+    int mx = -1;
+    for(int v : adj[u]) if(v != par[u]) {
+        if(mx == -1 or subt[v] >= subt[mx]) {
+            mx = v;
+        }
+    }
+    for(int v : adj[u]) if(v != par[u] and v != mx) solve(v, 0);
+    if(mx != -1) solve(mx, 1);
+    /* aqui adiciona a informação de u na resposta */
+    for(int v : adj[u]) if(v != par[u] and v != mx) add(v);
+    /* aqui responde a query de u. ans[u] = ... */
+    if(!keep) rem(u);
+}\end{minted}
+
+\subsection{2sat}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<vector<int>> reverseGraph(MAXN);
+vector<int> visited(MAXN);
+vector<int> exitOrder;
+vector<int> componentOfV(MAXN);
+vector<bool> res(MAXN);
+vector<vector<int>> components;
+
+void init(int numV, int numE) {
+    exitOrder.clear();
+    components.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        reverseGraph[i].clear();
+        visited[i] = 0;
+    }
+}
+
+void dfs(int v) {
+    visited[v] = 1;
+
+    for (int u : graph[v]) if (visited[u] == 0) dfs(u);
+
+    exitOrder.push_back(v);
+}
+
+void dfs2(int v, int c) {
+    visited[v] = 2;
+    componentOfV[v] = c;
+    components.back().push_back(v);
+
+    for (int u : reverseGraph[v]) if (visited[u] == 1) dfs2(u, c);
+}
+
+void addDisjunction(int a, bool na, int b, bool nb) {
+    // na and nb signify whether a and b are to be negated 
+    a = 2*a ^ na;
+    b = 2*b ^ nb;
+    int negA = a ^ 1;
+    int negB = b ^ 1;
+
+    graph[negA].push_back(b);
+    graph[negB].push_back(a);
+    reverseGraph[b].push_back(negA);
+    reverseGraph[a].push_back(negB);
+}
+
+bool solve2Sat(int n) {
+    // first dfs of kosaraju
+    for (int i = 0; i < 2*n; i++) if(visited[i] == 0) dfs(i);
+
+    int componentId = 0;
+    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
+        components.push_back(vector<int>());
+        dfs2(exitOrder[i], componentId++);
+    }
+
+    for (int i = 0; i < n; i++) {
+        if (componentOfV[2*i] == componentOfV[2*i+1]) return false;
+
+        res[i] = (componentOfV[2*i] > componentOfV[2*i+1]);
+    }
+    return true;
+}
+
+void solve() {
+    ll n, m, a, b;
+    char c1, c2;
+
+    cin >> n >> m;
+
+    init(2*n, 2*m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> c1 >> a >> c2 >> b; a--; b--;
+        
+        addDisjunction(a, c1 == '-', b, c2 == '-');
+    }
+
+    if (solve2Sat(n)) {
+        for (int i = 0; i < n; i++) {
+            cout << (res[i] ? "+" : "-") << " \n"[i == n-1];
+        }
+    } else {
+        cout << "IMPOSSIBLE" << endl;
+    }
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{condensationGraph}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<vector<int>> reverseGraph(MAXN);
+vector<int> visited(MAXN);
+vector<int> exitOrder;
+vector<int> componentOfV(MAXN);
+vector<unordered_set<int>> condensationGraphEdges(MAXN);
+vector<vector<int>> condensationGraph(MAXN);
+vector<vector<int>> components;
+
+void init(int numV, int numE) {
+    exitOrder.clear();
+    components.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        reverseGraph[i].clear();
+        condensationGraph[i].clear();
+        condensationGraphEdges[i].clear();
+        visited[i] = 0;
+    }
+}
+
+void dfs(int v) {
+    visited[v] = 1;
+
+    for (int u : graph[v]) if (visited[u] == 0) dfs(u);
+
+    exitOrder.push_back(v);
+}
+
+void dfs2(int v, int c) {
+    visited[v] = 2;
+    componentOfV[v] = c;
+    components.back().push_back(v);
+
+    for (int u : reverseGraph[v]) if (visited[u] == 1) dfs2(u, c);
+}
+
+void dfs3(int v, int parent) {
+    if (componentOfV[v] != componentOfV[parent]) {
+        condensationGraphEdges[componentOfV[parent]].insert(componentOfV[v]);
+    }
+    visited[v] = 3;
+
+    for (int u : graph[v]) if (visited[u] == 2) dfs3(u, v);
+}
+
+void createCondensationGraph(int n) {
+    for (int i = 0; i < n; i++) if(visited[i] == 2) dfs3(i,i);
+
+    for (int i = 0; i < components.size(); i++) {
+        condensationGraph[i].insert(condensationGraph[i].end(), condensationGraphEdges[i].begin(), condensationGraphEdges[i].end());
+    }
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        reverseGraph[b].push_back(a);
+    }
+
+    for (int i = 0; i < n; i++) if(visited[i] == 0) dfs(i);
+
+    int componentId = 0;
+    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
+        components.push_back(vector<int>());
+        dfs2(exitOrder[i], componentId++);
+    }
+
+    createCondensationGraph(n);
+
+    cout << "Condensation graph num of vertices: " << components.size() << endl;
+    for (int i = 0; i < components.size(); i++) {
+        for (int j = 0; j < condensationGraph[i].size(); j++) {
+            cout << "(" << i+1 << ", " << condensationGraph[i][j]+1 << ") ";
+        }
+    }
+    cout << endl << endl;
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{bridges}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<bool> visited(MAXN);
+vector<int> tin(MAXN);
+vector<int> lowlink(MAXN);
+vector<pair<int, int>> bridges;
+int entryTime;
+
+void init(int numV, int numE) {
+    entryTime = 0;
+    bridges.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        visited[i] = false;
+    }
+}
+
+void dfs(int v, int parent) {
+    visited[v] = true;
+    lowlink[v] = tin[v] = entryTime++;
+
+    for (int u : graph[v]) {
+        if (!visited[u]) {
+            dfs(u, v);
+            lowlink[v] = min(lowlink[v], lowlink[u]);
+        } else {
+            if (u == parent) continue;
+
+            lowlink[v] = min(lowlink[v], tin[u]);
+        }
+    }
+
+    if (v != parent && lowlink[v] == tin[v]) {
+        bridges.push_back({v, parent});
+    }
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+    }
+
+    for (int i = 0; i < n; i++) if(!visited[i]) dfs(i,i);
+
+    cout << bridges.size() << endl;        
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{bridgeTreeEbccMultipleEdges}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<vector<int>> edgeIds(MAXN);
+vector<bool> visited(MAXN);
+vector<bool> edgeVisited(MAXN);
+vector<int> tin(MAXN);
+vector<int> lowlink(MAXN);
+stack<int> vertices;
+vector<vector<int>> ebcc; // edge-biconnected components
+int entryTime;
+
+void init(int numV, int numE) {
+    entryTime = 0;
+    ebcc.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        edgeIds[i].clear();
+        visited[i] = false;
+    }
+    for (int i = 0; i < 2*numE; i++) {
+        edgeVisited[i] = false;
+    }
+}
+
+void dfs(int v, int parent) {
+    visited[v] = true;
+    lowlink[v] = tin[v] = entryTime++;
+    vertices.push(v); 
+
+    for (int i = 0; i < graph[v].size(); i++) {
+        int u = graph[v][i];
+        int edgeId = edgeIds[v][i];
+
+        if (edgeVisited[edgeId]) continue;
+        edgeVisited[edgeId] = true;
+
+        if (!visited[u]) {
+            dfs(u, v);
+            lowlink[v] = min(lowlink[v], lowlink[u]);
+        } else {
+            // with multiple edges, we can go back to the parent via an unvisited edge
+            // if (u == parent) continue;
+
+            lowlink[v] = min(lowlink[v], tin[u]);
+        }
+    }
+
+    // we need to execute this for the root, so there's no need to check (v != parent)
+    if (lowlink[v] == tin[v]) {
+        vector<int> newComponent;
+        do {
+            newComponent.push_back(vertices.top());
+            vertices.pop();
+        } while (newComponent.back() != v);
+
+        ebcc.push_back(newComponent);
+    }
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+        edgeIds[a].push_back(i);
+        edgeIds[b].push_back(i);
+    }
+
+    for (int i = 0; i < n; i++) if(!visited[i]) dfs(i,i);
+
+    cout << "Num components: " << ebcc.size() << endl; 
+    for (auto component : ebcc) {
+        cout << "=> ";
+        for (auto el : component) cout << el+1 << " ";
+        cout << endl;
+    }       
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{tarjan}
+\begin{minted}{cpp}
+
+// Algoritmo de Tarjan para pontes
+// O(n+m)
+
+const int MAXN = 200010;
+
+vector<bool> marc(MAXN,false);
+vector<int> pre(MAXN),low(MAXN),comp(MAXN);
+stack<int> pilha;
+
+vector<int> grafo[MAXN];
+vector<int> vertices_da_componente[MAXN];
+vector<pair<int,int> > bridges;
+
+vector<int> componente;
+
+int t=0,c=0,p=0;
+
+void dfs(int v,int pai){
+    t++;
+    pre[v] = t;
+    low[v] = t;
+    marc[v] = true;
+    pilha.push(v);
+
+    for(int viz:grafo[v]){
+        if(!marc[viz]){
+            dfs(viz,v);
+            low[v] = min(low[v],low[viz]);
+        }else{
+            if(viz==pai) continue;
+            low[v] = min(low[v],pre[viz]);
+        }
+    }
+
+    if(low[v]==pre[v]){
+        c++;
+        int vertice;
+
+        if(v!=0){
+            bridges.push_back({v,pai});
+        }
+
+        do{
+            vertice = pilha.top();
+            pilha.pop();
+            comp[vertice] = c;
+            vertices_da_componente[c].push_back(vertice);
+            componente[vertice] = c;
+        }while(vertice != v);
+    }
+}
+
+
+vector<vector<int> > bridgesTree(){
+    vector<vector<int> > tree(c+1);
+    for(int i=0;i<bridges.size();i++){
+        auto [a,b] = bridges[i];
+        tree[componente[a]].push_back(componente[b]);
+        tree[componente[b]].push_back(componente[a]);
+    }
+    return tree;
+}
+\end{minted}
+
+\subsection{stronglyConnectedComponents}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<vector<int>> reverseGraph(MAXN);
+vector<int> visited(MAXN);
+vector<int> exitOrder;
+vector<int> componentOfV(MAXN);
+vector<vector<int>> components;
+
+void init(int numV, int numE) {
+    exitOrder.clear();
+    components.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        reverseGraph[i].clear();
+        visited[i] = 0;
+    }
+}
+
+void dfs(int v) {
+    visited[v] = 1;
+
+    for (int u : graph[v]) if (visited[u] == 0) dfs(u);
+
+    exitOrder.push_back(v);
+}
+
+void dfs2(int v, int c) {
+    visited[v] = 2;
+    componentOfV[v] = c;
+    components.back().push_back(v);
+
+    for (int u : reverseGraph[v]) if (visited[u] == 1) dfs2(u, c);
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        reverseGraph[b].push_back(a);
+    }
+
+    for (int i = 0; i < n; i++) if(visited[i] == 0) dfs(i);
+
+    int componentId = 0;
+    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
+        components.push_back(vector<int>());
+        dfs2(exitOrder[i], componentId++);
+    }
+
+    cout << "Num of components: " << components.size() << endl;
+    for (auto component : components) {
+        cout << "=> ";
+        for (auto el : component) cout << el+1 << " ";
+        cout << endl;
+    }
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\subsection{blockCutTree}
+\begin{minted}{cpp}
+
+// Biconnected Components = 2-Vertex Connected Components
+#include "bits/stdc++.h"
+
+#define ll long long
+
+using namespace std;
+
+const ll MAXN = 200010;
+vector<vector<int>> graph(MAXN);
+vector<vector<int>> blockCutTree(MAXN);
+vector<vector<int>> edgeIds(MAXN);
+vector<pair<int,int>> edges(MAXN);
+vector<bool> visited(MAXN);
+vector<bool> compVisited(MAXN);
+vector<bool> edgeVisited(MAXN);
+vector<int> tin(MAXN);
+vector<int> lowlink(MAXN);
+vector<int> isArticulationPoint(MAXN);
+stack<int> edgesStack;
+vector<int> componentOfEdge(MAXN);
+int componentId;
+vector<vector<pair<int,int>>> bcc; // biconnected components
+int entryTime;
+
+void init(int numV, int numE) {
+    entryTime = 0;
+    componentId = 0;
+    bcc.clear();
+    for (int i = 0; i < numV; i++) {
+        graph[i].clear();
+        blockCutTree[i].clear();
+        edgeIds[i].clear();
+        visited[i] = false;
+        isArticulationPoint[i] = false;
+    }
+    for (int i = 0; i < 2*numE; i++) {
+        edgeVisited[i] = false;
+    }
+}
+
+void newBiconnectedComponent (int edgeId) {
+    if(edgesStack.empty()) return; // dealing with connected component of one vertex
+    
+    vector<pair<int,int>> newComponent;
+    int currId;
+    do {
+        currId = edgesStack.top();
+        newComponent.push_back(edges[currId]);
+        componentOfEdge[currId] = componentId;
+        edgesStack.pop();
+        if(edgesStack.empty()) break;
+    } while(currId != edgeId);
+    bcc.push_back(newComponent);
+    componentId++;
+}
+
+void dfs(int v, int parent) {
+    visited[v] = true;
+    lowlink[v] = tin[v] = entryTime++;
+
+    int numChildren = 0;
+    for (int i = 0; i < graph[v].size(); i++) {
+        int u = graph[v][i];
+        int edgeId = edgeIds[v][i];
+
+        if (edgeVisited[edgeId]) continue;
+        edgeVisited[edgeId] = true;
+        edgesStack.push(edgeId);
+
+        if (!visited[u]) {
+            numChildren++;
+
+            dfs(u, v);
+            lowlink[v] = min(lowlink[v], lowlink[u]);
+
+            bool foundNewComponent = false;
+            if (v == parent && numChildren >= 2) foundNewComponent = true;
+            if (v != parent && lowlink[u] >= tin[v]) foundNewComponent = true;
+
+            if (foundNewComponent) {
+                isArticulationPoint[v] = true;
+                newBiconnectedComponent(edgeId);
+            }
+        } else {
+            lowlink[v] = min(lowlink[v], tin[u]);
+        }
+    }
+}
+
+void findBiconnectedComponents(int n) {
+    for (int i = 0; i < n; i++) {
+        if(!visited[i]) {
+            dfs(i,i);
+            newBiconnectedComponent(-1);
+        }
+    }
+}
+
+void generateBlockCutTree(int n) {
+    for (int i = 0; i < n; i++) {
+        if (!isArticulationPoint[i]) continue;
+        for (int edgeId : edgeIds[i]) {
+            int comp = componentOfEdge[edgeId];
+            if (!compVisited[comp]) {
+                compVisited[comp] = true;
+                blockCutTree[componentId].push_back(comp);
+                blockCutTree[comp].push_back(componentId);
+            }
+        }
+        for (int edgeId : edgeIds[i]) {
+            int comp = componentOfEdge[edgeId];
+            compVisited[comp] = false;
+        }
+        componentId++;
+    }
+}
+
+void solve() {
+    ll n, m, a, b;
+    cin >> n >> m;
+    init(n, m);
+
+    for (ll i = 0; i < m; i++) {
+        cin >> a >> b; a--; b--;
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+        edgeIds[a].push_back(i);
+        edgeIds[b].push_back(i);
+        edges[i] = {a, b};
+    }
+
+    findBiconnectedComponents(n);
+    generateBlockCutTree(n);
+
+    cout << "Num components: " << bcc.size() << endl; 
+    for (auto component : bcc) {
+        cout << "=> ";
+        for (auto el : component) cout << "(" << el.first+1 << ", " << el.second+1 << ") ";
+        cout << endl;
+    }
+
+    cout << "Block-cut tree num of vertices: " << componentId << endl;
+    for (int i = 0; i < componentId; i++) {
+        for (int j = 0; j < blockCutTree[i].size(); j++) {
+            cout << "(" << i+1 << ", " << blockCutTree[i][j]+1 << ") ";
+        }
+    }
+    cout << endl << endl;
+}
+
+int main() {
+    ll t;
+    cin >> t;
+
+    while (t--) solve();
+
+    return 0;
+}\end{minted}
+
+\section{D&C}
+\subsection{ternarySearch}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+using namespace std;
+
+double fMin(double x){
+    return abs(500.0-x);
+}
+
+double ternarySearchGetMin(double l, double r) {
+    // double eps = 1e-9;              //set the error limit here
+    // while (r - l > eps) {
+    for (int i = 0; i < 100; ++i) {
+        double delta = (r - l) / 3;
+        double m1 = l + delta;
+        double m2 = r - delta;
+        (fMin(m1) > fMin(m2)) ? l = m1 : r = m2;
+    }
+    return l;
+}
+
+double fMax(double x){
+    return 1000.0 - abs(500.0-x);
+}
+
+double ternarySearchGetMax(double l, double r) {
+    // double eps = 1e-9;              //set the error limit here
+    // while (r - l > eps) {
+    for (int i = 0; i < 100; ++i) {
+        double delta = (r - l) / 3;
+        double m1 = l + delta;
+        double m2 = r - delta;
+        (fMax(m1) > fMax(m2)) ? r = m2 : l = m1;
+    }
+    return l;
+}
+
+
+
+int main() {
+    cout << "Minimum Point: " << ternarySearchGetMin(0.0,1000.0) << endl;
+    cout << "Maximum Point: " << ternarySearchGetMax(0.0,1000.0) << endl;
+    return 0;
+}\end{minted}
+
+\subsection{binarySearch}
+\begin{minted}{cpp}
+
+#include "bits/stdc++.h"
+using namespace std;
+
+bool p(int x) {
+    return x >= 4; // example [false, false, false, false, true, true]
+}
+
+int binarySearchFirstTrue(int l, int r) {
+    while(l<r) {
+        int m = l + (r-l)/2;
+
+        p(m) ? r = m : l = m+1;
+    }
+    return p(l) ? l : -1;
+}
+
+int binarySearchLastFalse(int l, int r) {
+    while(l<r) {
+        int m = l + (r-l+1)/2;
+        p(m) ? r = m-1 : l = m;
+    }
+    return p(l) ? -1 : l;
+}
+
+double binarySearchContinuous(double l, double r) {
+    for(int i=0;i<100;i++) {
+        double m = l + (r-l)/2;
+        p(m) ? r = m : l = m;
+    }
+    return l; 
+}
+
+int main() {
+    cout << "First true: " << binarySearchFirstTrue(0,1000) << endl;
+    cout << "Last false: " << binarySearchLastFalse(0,1000) << endl;
+    return 0;
+}\end{minted}
+
+\section{Extra}
+\subsection{run}
+\begin{minted}{sh}
+
+#!/bin/bash
+clear
+g++ -std=c++17 -O2 -Wall $2 $1/$1.cpp
+for file in $1/in*
+do
+    echo $file
+    ./a.out <$file
+    echo "-----------------------"
+    echo
+done\end{minted}
+
+\subsection{template}
+\begin{minted}{cpp}
+
+#include <bits/stdc++.h>
+
+using namespace std;
+
+typedef long long ll;
+
+#define optimize ios_base::sync_with_stdio(false); cin.tie(NULL); cout.tie(NULL);
+#define endl "\n"
+
+#define all(x) (x).begin(),(x).end()
+
+const int INF = 0x3f3f3f3f;
+const ll LINF = 0x3f3f3f3f3f3f3f3fll;
+
+
+int main(){
+    optimize;
+
+
+    return 0;
+}\end{minted}
+
+\subsection{debug}
+\begin{minted}{cpp}
+
+// Debug
+// 1. Precisa compilar com -DDEBUG
+
+// para pair
+template<typename A, typename B> ostream& operator<<(ostream &os, const pair<A, B> &p) { return os << '(' << p.first << "," << p.second << ')'; }
+
+// para vector,set,...
+template<typename T_container, typename T = typename enable_if<!is_same<T_container, string>::value, typename T_container::value_type>::type> ostream& operator<<(ostream &os, const T_container &v) { os << '{'; string sep; for (const T &x : v) os << sep << x, sep = ","; return os << '}'; }
+
+// debug
+void debug_out(string s) { cerr << endl; }
+template<typename H, typename... T>
+void debug_out(string s, H h, T... t) {
+    do { cerr << s[0]; s = s.substr(1);
+    } while (s.size() and s[0] != ',');
+    cerr << "=" << h;
+    debug_out(s, t...);
+}
+#ifdef DEBUG
+#define debug(...) cerr << "Line(" << __LINE__ << "): "; debug_out(#__VA_ARGS__, __VA_ARGS__)
+#else
+#define debug(...)
+#endif\end{minted}
+
+\section{Matematica}
+\subsection{crivo}
+\begin{minted}{cpp}
+
+// Crivo de Eratosthenes
+
+// crivo - O(n log(log(n)))
+// fact - O(log(n))
+
+ll _tam_crivo;
+bitset<10000010> bs;
+vector<int> primos;
+
+void crivo(ll limite){
+    _tam_crivo = limite +1;
+    bs.reset();bs.flip();
+    bs.set(0,false); bs.set(1,false);
+    for(ll i=2;i<=_tam_crivo; i++){
+        if(bs.test((size_t)i)){
+            for(ll j = i*i; j<=_tam_crivo;j+=i){
+                bs.set((size_t)j,false);
+            }
+            primos.push_back((int)i);
+        }
+    }
+}
+
+bool eh_primo(ll N){
+    if(N<_tam_crivo) return bs.test(N);
+    for(int i=0;i<primos.size();i++){
+        if(N%primos[i]==0){
+            return false;
+        }
+    }
+    return true;
+}
+
+vector<int> primeFactors(int N){
+    vector<int> factors;
+    int PF_idx = 0, PF = primos[PF_idx];
+    while(N!=1 && PF*PF <= N){
+        while(N%PF == 0){
+            N/=PF;
+            factors.push_back(PF);
+        }
+        PF=primos[++PF_idx];
+    }
+    if(N!=1) factors.push_back(N);
+    return factors;
+}
+
+\end{minted}
+
+\end{document}

@@ -1,0 +1,36 @@
+\documentclass[landscape,twocolumn,10pt,a4paper]{article}
+\usepackage{graphicx} 
+\usepackage{subfiles} 
+\usepackage{titlesec}
+\usepackage{minted}
+
+\usepackage{geometry}
+\geometry{%
+  top=1.5cm, 
+  bottom=1.5cm, 
+  inner=1.5cm, 
+  outer=1.5cm, 
+  heightrounded, 
+  bindingoffset=0.5cm % Espaço adicional para a encadernação, se necessário
+}
+
+\setlength{\columnseprule}{0.4pt}
+\setminted{
+    breaklines=true,      % Quebra de linha automática
+    breakanywhere=true,
+    breaksymbolleft={},   % Sem símbolo de quebra de linha
+    breakindent=0pt,      % Sem indentação nas linhas quebradas
+    breaksymbolsepleft=0pt, % Sem separação para o símbolo de quebra
+}
+
+
+\title{Capi-Library
+}
+\author{Bruno Rezendo, Dener Ribeiro, Samuel Raimundo}
+% \date{May 2024}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
