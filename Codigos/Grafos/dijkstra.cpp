@@ -6,7 +6,7 @@
 //O(v log(e))
 
 typedef pair<int,int> pii;
-vector<vector<pii>> g;
+vector<vector<pii>> g; //vertice, peso
 
 vector<int> dijkstra(int x){
     vector<int> d(g.size(), INF);

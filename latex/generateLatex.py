@@ -3,6 +3,11 @@ import os
 path = "../Codigos"
 latex_file_name = "capi-lib.tex"
 dir_list = os.listdir(path)
+dir_list.sort()
+
+if "Extra" in dir_list:
+    dir_list.remove("Extra")
+    dir_list.append("Extra")
 latex_file = open(latex_file_name,"w")
 
 def write_subsection(file,file_path):
@@ -21,6 +26,7 @@ def write_sections(directory,directory_path):
     latex_file.write(section)
     directory_path = path+'/'+directory+'/'
     files = os.listdir(directory_path)
+    files.sort()
     for file in files:
         write_subsection(file,directory_path+'/'+file)
 
