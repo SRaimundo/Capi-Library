@@ -1,8 +1,29 @@
-#include "bits/stdc++.h"
+// Condensation Graph
+// Representa as componentes fortemente conexas de um grafo direcionado
+// condensationGraph: grafo onde cada vértice é uma componente fortemente conexa
+// Complexidade: O(V + E)
+/*
+    init(n);
+    f(i,0,m) {
+        graph[a].push_back(b);
+        reverseGraph[b].push_back(a);
+    }
+    f(i,0,n) if(visited[i] == 0) dfs(i);
 
-#define ll long long
+    int componentId = 0;
+    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
+        components.push_back(vector<int>());
+        dfs2(exitOrder[i], componentId++);
+    }
+    createCondensationGraph(n);
 
-using namespace std;
+    cout << "Condensation graph num of vertices: " << components.size() << endl;
+    for (int i = 0; i < components.size(); i++) {
+        for (int j = 0; j < condensationGraph[i].size(); j++) {
+            cout << "(" << i+1 << ", " << condensationGraph[i][j]+1 << ") ";
+        }
+    }
+*/
 
 const ll MAXN = 200010;
 vector<vector<int>> graph(MAXN);
@@ -14,7 +35,7 @@ vector<unordered_set<int>> condensationGraphEdges(MAXN);
 vector<vector<int>> condensationGraph(MAXN);
 vector<vector<int>> components;
 
-void init(int numV, int numE) {
+void init(int numV) {
     exitOrder.clear();
     components.clear();
     for (int i = 0; i < numV; i++) {
@@ -57,43 +78,4 @@ void createCondensationGraph(int n) {
     for (int i = 0; i < components.size(); i++) {
         condensationGraph[i].insert(condensationGraph[i].end(), condensationGraphEdges[i].begin(), condensationGraphEdges[i].end());
     }
-}
-
-void solve() {
-    ll n, m, a, b;
-    cin >> n >> m;
-    init(n, m);
-
-    for (ll i = 0; i < m; i++) {
-        cin >> a >> b; a--; b--;
-        graph[a].push_back(b);
-        reverseGraph[b].push_back(a);
-    }
-
-    for (int i = 0; i < n; i++) if(visited[i] == 0) dfs(i);
-
-    int componentId = 0;
-    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
-        components.push_back(vector<int>());
-        dfs2(exitOrder[i], componentId++);
-    }
-
-    createCondensationGraph(n);
-
-    cout << "Condensation graph num of vertices: " << components.size() << endl;
-    for (int i = 0; i < components.size(); i++) {
-        for (int j = 0; j < condensationGraph[i].size(); j++) {
-            cout << "(" << i+1 << ", " << condensationGraph[i][j]+1 << ") ";
-        }
-    }
-    cout << endl << endl;
-}
-
-int main() {
-    ll t;
-    cin >> t;
-
-    while (t--) solve();
-
-    return 0;
 }

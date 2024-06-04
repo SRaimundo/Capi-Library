@@ -1,9 +1,30 @@
-// Biconnected Components = 2-Vertex Connected Components
-#include "bits/stdc++.h"
-
-#define ll long long
-
-using namespace std;
+// Block Cut Tree - Árvore dos pontos de articulação
+// findBiconnectedComponents: Encontra todos os componentes biconexos no grafo
+// generateBlockCutTree: Gera a block-cut tree usando os componentes biconexos
+// bcc: vetor de componentes biconexas
+// bcc[i]: vetor de arestas que representam o i-ésimo bcc
+// blockCutTree: Vetor de adjacências da block-cut tree
+// blockCutTree[i]: Lista de vértices adjacentes ao vértice i na block-cut tree
+// blockCutTree[i][j]: J-ésimo vértice adjacente ao vértice i na block-cut tree
+// componentId: Número de vértices na block-cut tree
+// Complexidade das operações: O(V + E)
+/*
+    init(n, m);
+    f(i,0,m) {
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+        edgeIds[a].push_back(i);
+        edgeIds[b].push_back(i);
+        edges[i] = {a, b};
+    }
+    findBiconnectedComponents(n);
+    generateBlockCutTree(n);
+    for (int i = 0; i < componentId; i++) {
+        for (int j = 0; j < blockCutTree[i].size(); j++) {
+            cout << "(" << i+1 << ", " << blockCutTree[i][j]+1 << ") ";
+        }
+    }
+*/
 
 const ll MAXN = 200010;
 vector<vector<int>> graph(MAXN);
@@ -19,7 +40,7 @@ vector<int> isArticulationPoint(MAXN);
 stack<int> edgesStack;
 vector<int> componentOfEdge(MAXN);
 int componentId;
-vector<vector<pair<int,int>>> bcc; // biconnected components
+vector<vector<pair<int,int>>> bcc;
 int entryTime;
 
 void init(int numV, int numE) {
@@ -39,7 +60,7 @@ void init(int numV, int numE) {
 }
 
 void newBiconnectedComponent (int edgeId) {
-    if(edgesStack.empty()) return; // dealing with connected component of one vertex
+    if(edgesStack.empty()) return;
     
     vector<pair<int,int>> newComponent;
     int currId;
@@ -113,46 +134,4 @@ void generateBlockCutTree(int n) {
         }
         componentId++;
     }
-}
-
-void solve() {
-    ll n, m, a, b;
-    cin >> n >> m;
-    init(n, m);
-
-    for (ll i = 0; i < m; i++) {
-        cin >> a >> b; a--; b--;
-        graph[a].push_back(b);
-        graph[b].push_back(a);
-        edgeIds[a].push_back(i);
-        edgeIds[b].push_back(i);
-        edges[i] = {a, b};
-    }
-
-    findBiconnectedComponents(n);
-    generateBlockCutTree(n);
-
-    cout << "Num components: " << bcc.size() << endl; 
-    for (auto component : bcc) {
-        cout << "=> ";
-        for (auto el : component) cout << "(" << el.first+1 << ", " << el.second+1 << ") ";
-        cout << endl;
-    }
-
-    cout << "Block-cut tree num of vertices: " << componentId << endl;
-    for (int i = 0; i < componentId; i++) {
-        for (int j = 0; j < blockCutTree[i].size(); j++) {
-            cout << "(" << i+1 << ", " << blockCutTree[i][j]+1 << ") ";
-        }
-    }
-    cout << endl << endl;
-}
-
-int main() {
-    ll t;
-    cin >> t;
-
-    while (t--) solve();
-
-    return 0;
 }

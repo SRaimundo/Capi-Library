@@ -1,3 +1,16 @@
+// Bridge Tree / Edge-Biconnected Components
+// NÃO FUNCIONA COM ARESTAS MÚLTIPLAS
+// Encontra os EBCC de um grafo não direcionado
+// ebcc: vetor de EBCCs
+// Complexidade: O(V + E)
+/*
+    init(n);
+    f(i,0,m){
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+    }
+    f(i,0,n) if(!visited[i]) dfs(i,i);
+*/
 #include "bits/stdc++.h"
 
 #define ll long long
@@ -10,10 +23,10 @@ vector<bool> visited(MAXN);
 vector<int> tin(MAXN);
 vector<int> lowlink(MAXN);
 stack<int> vertices;
-vector<vector<int>> ebcc; // edge-biconnected components
+vector<vector<int>> ebcc;
 int entryTime;
 
-void init(int numV, int numE) {
+void init(int numV) {
     entryTime = 0;
     ebcc.clear();
     for (int i = 0; i < numV; i++) {
@@ -38,7 +51,6 @@ void dfs(int v, int parent) {
         }
     }
 
-    // we need to execute this for the root, so there's no need to check (v != parent)
     if (lowlink[v] == tin[v]) {
         vector<int> newComponent;
         do {
@@ -48,35 +60,4 @@ void dfs(int v, int parent) {
 
         ebcc.push_back(newComponent);
     }
-}
-
-void solve() {
-    ll n, m, a, b;
-    cin >> n >> m;
-    init(n, m);
-
-    for (ll i = 0; i < m; i++) {
-        cin >> a >> b; a--; b--;
-        graph[a].push_back(b);
-        graph[b].push_back(a);
-    }
-
-    // DOES NOT WORK WITH MULTIPLE EDGES
-    for (int i = 0; i < n; i++) if(!visited[i]) dfs(i,i);
-
-    cout << "Num components: " << ebcc.size() << endl; 
-    for (auto component : ebcc) {
-        cout << "=> ";
-        for (auto el : component) cout << el+1 << " ";
-        cout << endl;
-    }       
-}
-
-int main() {
-    ll t;
-    cin >> t;
-
-    while (t--) solve();
-
-    return 0;
 }

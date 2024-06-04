@@ -1,5 +1,6 @@
-#include "bits/stdc++.h"
-using namespace std;
+// ternarySearchGetMin: Realiza uma busca ternária no intervalo [l, r] para encontrar o mínimo valor da função fMin
+// ternarySearchGetMax: Realiza uma busca ternária no intervalo [l, r] para encontrar o máximo valor da função fMax
+// Complexidade: O(log(n))
 
 double fMin(double x){
     return abs(500.0-x);
@@ -31,12 +32,4 @@ double ternarySearchGetMax(double l, double r) {
         (fMax(m1) > fMax(m2)) ? r = m2 : l = m1;
     }
     return l;
-}
-
-
-
-int main() {
-    cout << "Minimum Point: " << ternarySearchGetMin(0.0,1000.0) << endl;
-    cout << "Maximum Point: " << ternarySearchGetMax(0.0,1000.0) << endl;
-    return 0;
 }

@@ -1,8 +1,20 @@
-#include "bits/stdc++.h"
+// Strongly Connected Components - Componentes fortemente conexas
+// components: componentes fortemente conexas
+// Complexidade: O(V + E)
+/*
+    init(n);
+    f(i,0,m) {
+        graph[a].push_back(b);
+        reverseGraph[b].push_back(a);
+    }
+    f(i,0,n) if(visited[i] == 0) dfs(i);
 
-#define ll long long
-
-using namespace std;
+    int componentId = 0;
+    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
+        components.push_back(vector<int>());
+        dfs2(exitOrder[i], componentId++);
+    }
+*/
 
 const ll MAXN = 200010;
 vector<vector<int>> graph(MAXN);
@@ -12,7 +24,7 @@ vector<int> exitOrder;
 vector<int> componentOfV(MAXN);
 vector<vector<int>> components;
 
-void init(int numV, int numE) {
+void init(int numV) {
     exitOrder.clear();
     components.clear();
     for (int i = 0; i < numV; i++) {
@@ -36,40 +48,4 @@ void dfs2(int v, int c) {
     components.back().push_back(v);
 
     for (int u : reverseGraph[v]) if (visited[u] == 1) dfs2(u, c);
-}
-
-void solve() {
-    ll n, m, a, b;
-    cin >> n >> m;
-    init(n, m);
-
-    for (ll i = 0; i < m; i++) {
-        cin >> a >> b; a--; b--;
-        graph[a].push_back(b);
-        reverseGraph[b].push_back(a);
-    }
-
-    for (int i = 0; i < n; i++) if(visited[i] == 0) dfs(i);
-
-    int componentId = 0;
-    for (int i = exitOrder.size()-1; i >= 0; i--) if(visited[exitOrder[i]] == 1) {
-        components.push_back(vector<int>());
-        dfs2(exitOrder[i], componentId++);
-    }
-
-    cout << "Num of components: " << components.size() << endl;
-    for (auto component : components) {
-        cout << "=> ";
-        for (auto el : component) cout << el+1 << " ";
-        cout << endl;
-    }
-}
-
-int main() {
-    ll t;
-    cin >> t;
-
-    while (t--) solve();
-
-    return 0;
 }

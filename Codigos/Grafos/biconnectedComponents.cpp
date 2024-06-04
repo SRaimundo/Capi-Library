@@ -1,9 +1,19 @@
-// Biconnected Components = 2-Vertex Connected Components
-#include "bits/stdc++.h"
-
-#define ll long long
-
-using namespace std;
+// Componentes Biconexas = Componentes Conectadas por 2-Vértices
+// findBiconnectedComponents: Encontra todos os componentes biconexos no grafo
+// bcc: vetor de componentes biconexas
+// bcc[i]: vetor de arestas que representam o i-ésimo bcc
+// Complexidade das operações: O(V + E)
+/*
+    init(n, m);
+    f(i,0,m) {
+        graph[a].push_back(b);
+        graph[b].push_back(a);
+        edgeIds[a].push_back(i);
+        edgeIds[b].push_back(i);
+        edges[i] = {a, b};
+    }
+    findBiconnectedComponents(n);
+*/
 
 const ll MAXN = 200010;
 vector<vector<int>> graph(MAXN);
@@ -15,7 +25,7 @@ vector<int> tin(MAXN);
 vector<int> lowlink(MAXN);
 vector<int> isArticulationPoint(MAXN);
 stack<int> edgesStack;
-vector<vector<pair<int,int>>> bcc; // biconnected components
+vector<vector<pair<int,int>>> bcc;
 int entryTime;
 
 void init(int numV, int numE) {
@@ -33,7 +43,7 @@ void init(int numV, int numE) {
 }
 
 void newBiconnectedComponent (int edgeId) {
-    if(edgesStack.empty()) return; // dealing with connected component of one vertex
+    if(edgesStack.empty()) return;
     
     vector<pair<int,int>> newComponent;
     int currId;
@@ -86,37 +96,4 @@ void findBiconnectedComponents(int n) {
             newBiconnectedComponent(-1);
         }
     }
-}
-
-void solve() {
-    ll n, m, a, b;
-    cin >> n >> m;
-    init(n, m);
-
-    for (ll i = 0; i < m; i++) {
-        cin >> a >> b; a--; b--;
-        graph[a].push_back(b);
-        graph[b].push_back(a);
-        edgeIds[a].push_back(i);
-        edgeIds[b].push_back(i);
-        edges[i] = {a, b};
-    }
-
-    findBiconnectedComponents(n);
-
-    cout << "Num components: " << bcc.size() << endl; 
-    for (auto component : bcc) {
-        cout << "=> ";
-        for (auto el : component) cout << "(" << el.first+1 << ", " << el.second+1 << ") ";
-        cout << endl;
-    }       
-}
-
-int main() {
-    ll t;
-    cin >> t;
-
-    while (t--) solve();
-
-    return 0;
 }

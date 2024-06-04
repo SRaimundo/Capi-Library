@@ -1,9 +1,15 @@
-#include "bits/stdc++.h"
-
-#define ll long long
-
-using namespace std;
-
+// Algoritmo 2-SAT usando Kosaraju
+// init: Inicializa as estruturas de dados
+// addDisjunction: Adiciona uma disjunção - na e nb significam se a e b devem ser negados
+// solve2Sat: Resolve o problema 2-SAT e retorna verdadeiro se houver uma solução
+// res[i]: Valor que a i-ésima variável deve assumir para a resposta ser válida
+// Complexidade das operações: O(V + E)
+/*
+    init(2*n)
+    f(i,0,m) addDisjunction(a, c1 == '-', b, c2 == '-')
+    if (solve2Sat(n))
+        for (i,0,n) cout << res[i];
+*/
 const ll MAXN = 200010;
 vector<vector<int>> graph(MAXN);
 vector<vector<int>> reverseGraph(MAXN);
@@ -13,7 +19,7 @@ vector<int> componentOfV(MAXN);
 vector<bool> res(MAXN);
 vector<vector<int>> components;
 
-void init(int numV, int numE) {
+void init(int numV) {
     exitOrder.clear();
     components.clear();
     for (int i = 0; i < numV; i++) {
@@ -40,7 +46,6 @@ void dfs2(int v, int c) {
 }
 
 void addDisjunction(int a, bool na, int b, bool nb) {
-    // na and nb signify whether a and b are to be negated 
     a = 2*a ^ na;
     b = 2*b ^ nb;
     int negA = a ^ 1;
@@ -53,7 +58,6 @@ void addDisjunction(int a, bool na, int b, bool nb) {
 }
 
 bool solve2Sat(int n) {
-    // first dfs of kosaraju
     for (int i = 0; i < 2*n; i++) if(visited[i] == 0) dfs(i);
 
     int componentId = 0;
@@ -68,36 +72,4 @@ bool solve2Sat(int n) {
         res[i] = (componentOfV[2*i] > componentOfV[2*i+1]);
     }
     return true;
-}
-
-void solve() {
-    ll n, m, a, b;
-    char c1, c2;
-
-    cin >> n >> m;
-
-    init(2*n, 2*m);
-
-    for (ll i = 0; i < m; i++) {
-        cin >> c1 >> a >> c2 >> b; a--; b--;
-        
-        addDisjunction(a, c1 == '-', b, c2 == '-');
-    }
-
-    if (solve2Sat(n)) {
-        for (int i = 0; i < n; i++) {
-            cout << (res[i] ? "+" : "-") << " \n"[i == n-1];
-        }
-    } else {
-        cout << "IMPOSSIBLE" << endl;
-    }
-}
-
-int main() {
-    ll t;
-    cin >> t;
-
-    while (t--) solve();
-
-    return 0;
 }

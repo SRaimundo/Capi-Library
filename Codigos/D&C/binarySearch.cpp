@@ -1,8 +1,10 @@
-#include "bits/stdc++.h"
-using namespace std;
+// binarySearchFirstTrue: Encontra o primeiro valor verdadeiro de p no intervalo [l, r].
+// binarySearchLastFalse: Encontra o último valor falso de p no intervalo [l, r].
+// binarySearchContinuous: Busca binária para valores contínuos para encontrar o limite onde p se torna verdadeiro.
+// Complexidade: O(log(r - l))
 
 bool p(int x) {
-    return x >= 4; // example [false, false, false, false, true, true]
+    return x >= 4;
 }
 
 int binarySearchFirstTrue(int l, int r) {
@@ -28,10 +30,4 @@ double binarySearchContinuous(double l, double r) {
         p(m) ? r = m : l = m;
     }
     return l; 
-}
-
-int main() {
-    cout << "First true: " << binarySearchFirstTrue(0,1000) << endl;
-    cout << "Last false: " << binarySearchLastFalse(0,1000) << endl;
-    return 0;
 }
