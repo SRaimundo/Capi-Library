@@ -19,7 +19,7 @@ def write_subsection(file,file_path):
     for line in f:
         latex_file.write(line)
     f.close()
-    latex_file.write(f"\end{{minted}}\n\n")
+    latex_file.write(f"\n\n\end{{minted}}\n\n")
 
 def write_sections(directory,directory_path):
     section = f"\section{{{directory}}}\n"
