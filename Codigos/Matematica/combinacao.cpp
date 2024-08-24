@@ -17,9 +17,11 @@ ll comb(int n,int k){
 
 void init(){
     fat[0] = 1;
-    invfat[0] = inv(fat[0],MOD);
-    for(int i=1;i<MAXN;i++){
+    for(ll i=1;i<MAXN;i++){
         fat[i] = (fat[i-1]*i)%MOD;
-        invfat[i] = inv(fat[i],MOD);
+    }
+    invfat[MAXN-1] = inv(fat[MAXN-1],MOD);
+    for(ll i=MAXN-2;i>=0;i--){
+        invfat[i] = (invfat[i+1] * (i+1))%MOD;
     }
 }
